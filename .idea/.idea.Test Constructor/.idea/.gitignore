@@ -1,0 +1,13 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Rider ignored files
+/projectSettingsUpdater.xml
+/contentModel.xml
+/.idea.Test Constructor.iml
+/modules.xml
+# Datasource local storage ignored files
+/../../../../../../../../:\Programs\Git\Repositories\Test Constructor\.idea\.idea.Test Constructor\.idea/dataSources/
+/dataSources.local.xml
+# Editor-based HTTP Client requests
+/httpRequests/
