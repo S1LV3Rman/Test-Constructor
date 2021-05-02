@@ -14,6 +14,9 @@ public class InterfaceManager : Singleton<InterfaceManager>
     // Интерфейс в режиме конструктора
     public GameObject constructUI;
 
+    // Поле для создания линий соединения
+    public GameObject connectionField;
+
     // Префаб соединения
     public GameObject connectionPrefab;
 
@@ -22,6 +25,12 @@ public class InterfaceManager : Singleton<InterfaceManager>
     
     // Изображение выделяющее активный инструмент
     public RectTransform highlight;
+    
+    // Посказка использовать действие
+    public RectTransform actionHint;
+
+    // Подсказка активна?
+    private bool _actionHintActive;
     
     // Текущее активное соединение
     private Connection _currentConnection;
@@ -33,13 +42,25 @@ public class InterfaceManager : Singleton<InterfaceManager>
     {
         // Смотрим последнюю нажатую цифру
         var currentTool = InputManager.instance.lastNumber;
-        
+
         // Если текущий инструмент поменялся
         if (_currentTool != currentTool)
         {
             // Сдвигаем выделение под текущий инструмент
             highlight.position = tools[currentTool - 1].position;
             _currentTool = currentTool;
+        }
+
+        // Смотрим ли мы на игрока
+        var lookingAtPlayer = GameManager.instance.lookingAtPlayer;
+
+        // Смотрим на игрока, а подсказки нет или
+        // не смотрим на игрока, а посдказка есть
+        if (_actionHintActive != lookingAtPlayer)
+        {
+            // Меняем отображение подсказки
+            actionHint.gameObject.SetActive(lookingAtPlayer);
+            _actionHintActive = lookingAtPlayer;
         }
     }
 
@@ -54,7 +75,7 @@ public class InterfaceManager : Singleton<InterfaceManager>
         }
 
         // Создаём новое соединение
-        _currentConnection = Instantiate(connectionPrefab, constructUI.transform).
+        _currentConnection = Instantiate(connectionPrefab, connectionField.transform).
             GetComponent<Connection>();
 
         // Задаём соединению начальную (первый объект)

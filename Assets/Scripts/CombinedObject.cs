@@ -10,12 +10,14 @@ public class CombinedObject : MonoBehaviour
     public List<SimpleObject> combinedObjects = new List<SimpleObject>();
     
     // Список объектов, с которым соприкасается этот объект
+    [HideInInspector]
     public List<Transform> currentCollisions = new List<Transform>();
 
-    private void Start()
+    public void Assemble()
     {
         // Вычисляем новое расположение объекта
         // в середеине между всеми его составляющими
+        
         var newPosition = Vector3.zero;
 
         // Суммируем расположение всех примитивов
@@ -46,7 +48,7 @@ public class CombinedObject : MonoBehaviour
     }
     
     // Присоединяет примитивы
-    public void AddObjects(SimpleObject[] newObjects)
+    public void AddObjects(List<SimpleObject> newObjects)
     {
         // Добавляем новые примитивы в список
         combinedObjects.AddRange(newObjects);

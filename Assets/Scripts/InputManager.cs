@@ -24,8 +24,11 @@ public class InputManager : Singleton<InputManager>
     public bool LMB = false;
     
     // Какая цифровая кнопка была нажата последней
-    // [HideInInspector]
+    [HideInInspector]
     public int lastNumber = 1;
+    
+    // Кнопка действия нажата?
+    public bool action = false;
     
     // Массив кнопок, которые можно нажимать
     private string[] _activeNumbers;
@@ -48,6 +51,9 @@ public class InputManager : Singleton<InputManager>
 
         // Определяем нажатие ЛКМ
         LMB = Input.GetMouseButton(0);
+        
+        // Определяем нажатие 
+        action = Input.GetKeyDown("e");
 
         // Проверяем все кнопки
         for (int i = 0; i < _activeNumbers.Length; ++i)

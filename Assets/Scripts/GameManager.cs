@@ -2,6 +2,15 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+enum GameStages
+{
+    MovingObject,
+    ConnectingObject,
+    CreatingObject,
+    PlayMode,
+    ConstructMode
+}
+
 public class GameManager : Singleton<GameManager>
 {
     // Используемая камера
@@ -11,16 +20,19 @@ public class GameManager : Singleton<GameManager>
     [HideInInspector]
     public bool lookingAtObject = false;
 
+    // Поцентру перед камерай находится игрок?
+    [HideInInspector]
+    public bool lookingAtPlayer = false;
+
+    // Текущий активный режим
+    private GameStages _gameStage = GameStages.ConstructMode;
+    
     // Максимальная дистанция
     // для обнаружения объектов перед камерой
     public float maxRayDistance = 10f;
 
     // Слой на котором находятся объекты
     public LayerMask rayLayer;
-
-    // Игрок держит объект?
-    [HideInInspector]
-    public bool holdingObject = false;
 
     // Точка соприкосновения с объектом перед камерой
     private RaycastHit _currentHit;
@@ -35,14 +47,8 @@ public class GameManager : Singleton<GameManager>
     // Объект, выбранный для соединения
     private Transform _connectionTarget;
 
-    // Игрок соединяет объекты?
-    private bool connectingObject = false;
-
     // Можно установить соединение?
     private bool canSetConnection = false;
-
-    // Сейчас создаётся объект?
-    private bool creatingObject = false;
     
     private void Start()
     {
@@ -51,124 +57,182 @@ public class GameManager : Singleton<GameManager>
 
     void Update()
     {
-        // Если сейчас игрок держит объект
-        if (holdingObject)
+        // Выбираем действи в зависимости от активного режима
+        switch (_gameStage)
         {
-            // И при этом ЛКМ отжата
-            if (!InputManager.instance.LMB)
-            {
-                // Отпускаем объект
-                DropObject();
-            }
-            // Иначе продолжаем двигать объект
-            else if (_currentTarget != null)
-            {
-                // Двигаем объект за камерой
-                // (преобразуем локальный сдвиг в глобальный и
-                // добавляем к позиции камеры; можно проще?)
-                _currentTarget.position =
-                    currentCamera.transform.position + 
-                    currentCamera.transform.TransformDirection(_objectTranslation);
-            }
-        }
-        // Если сейчас игрок соединяет объекты
-        else if (connectingObject)
-        {
-            // И при этом ЛКМ отжата
-            if (!InputManager.instance.LMB)
-            {
-                // Заканчиваем соединение
-                EndMerge();
-            }
-            // Иначе выпускаем луч через центр экрана
-            else if (Physics.Raycast(
-                currentCamera.transform.position,
-                currentCamera.transform.forward,
-                out _currentHit,
-                maxRayDistance,
-                rayLayer))
-            {
-                CheckMerge();
-            }
-            else
-            {
-                InterfaceManager.instance.RevertConnection();
-                
-                canSetConnection = false;
-            }
-        }
-        // Если сейчас создаётся объект
-        else if (creatingObject)
-        {
-            // И при этом ЛКМ отжата
-            if (!InputManager.instance.LMB)
-            {
-                // Заканчиваем создание объекта
-                EndCreating();
-            }
-            // Иначе продолжаем двигать объект
-            else if (_currentTarget != null)
-            {
-                // Двигаем объект за камерой
-                // на расстоянии 1/4 maxRayDistance
-                _currentTarget.position =
-                    currentCamera.transform.position + 
-                    currentCamera.transform.forward * (maxRayDistance / 4);
-            }
-        }
-        else
-        {
-            // Выпускаем луч через центр экрана
-            lookingAtObject = Physics.Raycast(
-                currentCamera.transform.position,
-                currentCamera.transform.forward,
-                out _currentHit,
-                maxRayDistance,
-                rayLayer);
+            // Режим перемещения объекта ////////////////////////
+            case GameStages.MovingObject:
+
+                // И при этом ЛКМ отжата
+                if (!InputManager.instance.LMB)
+                {
+                    // Отпускаем объект
+                    DropObject();
+                }
+                // Иначе продолжаем двигать объект
+                else if (_currentTarget != null)
+                {
+                    // Двигаем объект за камерой
+                    // (преобразуем локальный сдвиг в глобальный и
+                    // добавляем к позиции камеры; можно проще?)
+                    _currentTarget.position =
+                        currentCamera.transform.position +
+                        currentCamera.transform.TransformDirection(_objectTranslation);
+                }
+
+                break;
+
+            // Режим соединения объектов //////////////////////////
+            case GameStages.ConnectingObject:
+
+                // И при этом ЛКМ отжата
+                if (!InputManager.instance.LMB)
+                {
+                    // Заканчиваем соединение
+                    EndMerge();
+                }
+                // Иначе выпускаем луч через центр экрана
+                else if (Physics.Raycast(
+                    currentCamera.transform.position,
+                    currentCamera.transform.forward,
+                    out _currentHit,
+                    maxRayDistance,
+                    rayLayer))
+                {
+                    CheckMerge();
+                }
+                else
+                {
+                    InterfaceManager.instance.RevertConnection();
+
+                    canSetConnection = false;
+                }
+
+                break;
+
+            // Режим создания объекта //////////////////////////
+            case GameStages.CreatingObject:
+
+                // И при этом ЛКМ отжата
+                if (!InputManager.instance.LMB)
+                {
+                    // Заканчиваем создание объекта
+                    EndCreating();
+                }
+                // Иначе продолжаем двигать объект
+                else if (_currentTarget != null)
+                {
+                    // Двигаем объект за камерой
+                    // на расстоянии 1/4 maxRayDistance
+                    _currentTarget.position =
+                        currentCamera.transform.position +
+                        currentCamera.transform.forward * (maxRayDistance / 4);
+                }
+
+                break;
+
+            // Стандартный режим конструктора ////////////////////
+            case GameStages.ConstructMode:
+
+                // Выпускаем луч через центр экрана
+                if (Physics.Raycast(
+                    currentCamera.transform.position,
+                    currentCamera.transform.forward,
+                    out _currentHit,
+                    maxRayDistance,
+                    rayLayer))
+                {
+                    lookingAtObject = true;
+                    
+                    // Получаем основной объект
+                    _currentTarget = _currentHit.collider.transform.parent;
+                    
+                    // Если смотрим на игрока
+                    if (_currentTarget.CompareTag("Player"))
+                    {
+                        lookingAtPlayer = true;
+
+                        // Если нажата кнопка действия
+                        if (InputManager.instance.action)
+                        {
+                            EnterPlayMode();
+                        }
+                    }
+                    else
+                    {
+                        lookingAtPlayer = false;
+                    }
+                    
+                    // Проверяем какой инструмент,
+                    // взаимодействующий с объектами сейчас активен
+                    switch (InputManager.instance.lastNumber)
+                    {
+                        // Перемещение объекта
+                        case 1:
+                            // Если ЛКМ зажата
+                            if (InputManager.instance.LMB)
+                            {
+                                // Берём объект
+                                TakeObject();
+                            }
+
+                            break;
+
+                        // Объединение объектов
+                        case 2:
+                            // Если ЛКМ зажата
+                            if (InputManager.instance.LMB)
+                            {
+                                // Выбираем объект для объединения
+                                StartMerge();
+                            }
+
+                            break;
+                    }
+                }
+                else
+                {
+                    lookingAtObject = false;
+                    lookingAtPlayer = false;
+                }
+
+                // Проверяем какой инструмент,
+                // не взаимодействующий с объектами сейчас активен
+                switch (InputManager.instance.lastNumber)
+                {
+                    // Создание куба
+                    case 3:
+                        // Если ЛКМ зажата
+                        if (InputManager.instance.LMB)
+                        {
+                            // Создаём куб
+                            StartCreating(SimpleObjectTypes.cube);
+                        }
+
+                        break;
+
+                    // Создание сферы
+                    case 4:
+                        // Если ЛКМ зажата
+                        if (InputManager.instance.LMB)
+                        {
+                            // Создаём сферу
+                            StartCreating(SimpleObjectTypes.sphere);
+                        }
+
+                        break;
+                }
+
+                break;
             
-            // Определям какой инструмент сейчас активен
-            switch (InputManager.instance.lastNumber)
-            {
-                // Перемещение объекта
-                case 1:
-                    // Если ЛКМ зажата
-                    if (InputManager.instance.LMB)
-                    {
-                        // Берём объект
-                        TakeObject();
-                    }
-                    break;
-
-                // Объединение объектов
-                case 2:
-                    // Если ЛКМ зажата
-                    if (InputManager.instance.LMB)
-                    {
-                        // Выбираем объект для объединения
-                        StartMerge();
-                    }
-                    break;
-
-                // Создание куба
-                case 3:
-                    // Если ЛКМ зажата
-                    if (InputManager.instance.LMB)
-                    {
-                        // Создаём куб
-                        StartCreating(SimpleObjectTypes.cube);
-                    }
-                    break;
-
-                // Создание сферы
-                case 4:
-                    // Если ЛКМ зажата
-                    if (InputManager.instance.LMB)
-                    {
-                        // Создаём сферу
-                        StartCreating(SimpleObjectTypes.sphere);
-                    }
-                    break;
-            }
+            // Режим игры //////////////////////////////////
+            case GameStages.PlayMode:
+                if (InputManager.instance.action)
+                {
+                    ExitPlayMode();
+                }
+                
+                break;
         }
     }
 
@@ -178,11 +242,12 @@ public class GameManager : Singleton<GameManager>
         // Если перед камерой есть объект
         if (lookingAtObject)
         {
-            // Получаем основной объект
-            _currentTarget = _currentHit.collider.transform.parent;
-
-            // Делаем объект кинематиком, чтобы он не падал
-            _currentTarget.GetComponent<Rigidbody>().isKinematic = true;
+            // Проверяем, что цель не игрок
+            if (!_currentTarget.CompareTag("Player"))
+            {
+                // Делаем объект кинематиком, чтобы он не падал
+                _currentTarget.GetComponent<Rigidbody>().isKinematic = true;
+            }
 
             // Вычисляем позицию объекта относительно камеры
             _objectTranslation =
@@ -190,7 +255,7 @@ public class GameManager : Singleton<GameManager>
                     _currentTarget.position - currentCamera.transform.position);
 
             // Объект взят
-            holdingObject = true;
+            _gameStage = GameStages.MovingObject;
         }
     }
 
@@ -198,13 +263,17 @@ public class GameManager : Singleton<GameManager>
     void DropObject()
     {
         // Проверяем, что объект сейчас захвачен
-        if (holdingObject)
+        if (_gameStage == GameStages.MovingObject)
         {
-            // Возвращаем объекту нормальную физику
-            _currentTarget.GetComponent<Rigidbody>().isKinematic = false;
+            // Проверяем, что цель не игрок
+            if (!_currentTarget.CompareTag("Player"))
+            {
+                // Возвращаем объекту нормальную физику
+                _currentTarget.GetComponent<Rigidbody>().isKinematic = false;
+            }
 
-            // Сбрасываем признак
-            holdingObject = false;
+            // Возвращаемся в обычный режим
+            _gameStage = GameStages.ConstructMode;
         }
     }
 
@@ -214,7 +283,7 @@ public class GameManager : Singleton<GameManager>
         if (lookingAtObject)
         {
             // Получаем основной объект
-            _connectionTarget = _currentHit.collider.transform.parent;
+            _connectionTarget = _currentTarget;
 
             // Переводим объект на слой поумолчанию,
             // чтобы нельзя было объединить его самого с собой
@@ -224,7 +293,7 @@ public class GameManager : Singleton<GameManager>
             InterfaceManager.instance.CreateConnection(_connectionTarget);
 
             // Началось соединение объектов
-            connectingObject = true;
+            _gameStage = GameStages.ConnectingObject;
         }
     }
 
@@ -233,7 +302,7 @@ public class GameManager : Singleton<GameManager>
     {
         // Получаем основной объект
         _currentTarget = _currentHit.collider.transform.parent;
-
+        
         // Проверяем соприкасаются ли выбранные объекты
         canSetConnection = _connectionTarget.GetComponent<CombinedObject>().
             currentCollisions.Contains(_currentTarget);
@@ -246,7 +315,7 @@ public class GameManager : Singleton<GameManager>
     void EndMerge()
     {
         // Проверяем, что соединение объектов активно
-        if (connectingObject)
+        if (_gameStage == GameStages.ConnectingObject)
         {
             // Возвращаем объект на слой активных объектов
             _connectionTarget.GetComponent<CombinedObject>().SetLayerMask(LayerMask.NameToLayer("Interactable"));
@@ -268,7 +337,7 @@ public class GameManager : Singleton<GameManager>
             }
 
             // Сбрасываем признак
-            connectingObject = false;
+            _gameStage = GameStages.ConstructMode;
         }
     }
     
@@ -285,20 +354,69 @@ public class GameManager : Singleton<GameManager>
         _currentTarget.GetComponent<Rigidbody>().isKinematic = true;
         
         // Объект создаётся
-        creatingObject = true;
+        _gameStage = GameStages.CreatingObject;
     }
 
     // Заканчивает создание объекта
     void EndCreating()
     {
         // Проверяем, что объект создаётся
-        if (creatingObject)
+        if (_gameStage == GameStages.CreatingObject)
         {
             // Возвращаем объекту нормальную физику
             _currentTarget.GetComponent<Rigidbody>().isKinematic = false;
 
             // Сбрасываем признак
-            creatingObject = false;
+            _gameStage = GameStages.ConstructMode;
+            
+            // Меняем текущий инструмент на перемещение
+            InputManager.instance.lastNumber = 1;
+        }
+    }
+    
+    // Запускает режим игры
+    void EnterPlayMode()
+    {
+        //Проверяем, что мы в режиме конструктора
+        if (_gameStage == GameStages.ConstructMode)
+        {
+            // Переключаем поведение камеры
+            currentCamera.GetComponent<FPController>().enabled = false;
+            currentCamera.GetComponent<SmoothFollow>().enabled = true;
+
+            // Включаем на объекте управление
+            _currentTarget.GetComponent<SimpleController>().enabled = true;
+
+            // Отключаем интерфейс конструктора
+            InterfaceManager.instance.constructUI.SetActive(false);
+            
+            // Переходим в режим игры
+            _gameStage = GameStages.PlayMode;
+
+            // Сбрасываем признаки
+            lookingAtPlayer = false;
+            lookingAtObject = false;
+        }
+    }
+    
+    // Выходим из режима игры
+    void ExitPlayMode()
+    {
+        //Проверяем, что мы в режиме игры
+        if (_gameStage == GameStages.PlayMode)
+        {
+            // Переключаем поведение камеры
+            currentCamera.GetComponent<FPController>().enabled = true;
+            currentCamera.GetComponent<SmoothFollow>().enabled = false;
+
+            // Выключаем на объекте управление
+            _currentTarget.GetComponent<SimpleController>().enabled = false;
+
+            // Включаем интерфейс конструктора
+            InterfaceManager.instance.constructUI.SetActive(true);
+
+            // Переходим в режим конструктора
+            _gameStage = GameStages.ConstructMode;
         }
     }
 }

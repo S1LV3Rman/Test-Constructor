@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using Random = UnityEngine.Random;
 
@@ -39,11 +40,14 @@ public class ObjectManager : Singleton<ObjectManager>
     // Присоединяет объекты к существующему
     private void AttachObjects(CombinedObject mainObject, CombinedObject[] objectsToAttach)
     {
-        // Добавляем все объекты в главный
+        // Добавляем все объекты в новый
         foreach (var obj in objectsToAttach)
         {
-            // Добавляем объекты
-            mainObject.AddObjects(obj.combinedObjects.ToArray());
+            // Добавляем всесь список объектов в новый
+            mainObject.AddObjects(obj.combinedObjects);
+
+            // Очищаем список присоединённых к нему объектов
+            obj.combinedObjects.Clear();
 
             // Удаляем этот объект из списка объектов на сцене
             objects.Remove(obj);
@@ -62,6 +66,25 @@ public class ObjectManager : Singleton<ObjectManager>
     // Объединяет объекты в новый
     public void MergeObjects(CombinedObject[] objectsToMerge)
     {
+        // Преобразуем массив в список,
+        // чтобы потом из него удалить элемент
+        var objectsList = objectsToMerge.ToList();
+        
+        // Проходимся по элементам и проверяем их теги
+        foreach (var obj in objectsToMerge)
+        {
+            if (obj.CompareTag("Player"))
+            {
+                // Используем отдельную функцию для присоединения
+                // к игроку без смещения его позиции
+                objectsList.Remove(obj);
+                AttachObjects(obj, objectsList.ToArray());
+                return;
+            }
+        }
+        
+        // Среди объектов нет игрока
+        
         // Создаём новый комбинированый объект
         var newCombinedObject =
             Instantiate(combinedObjectPrefab, ObjectsSpace);
@@ -88,6 +111,9 @@ public class ObjectManager : Singleton<ObjectManager>
         
         // Добавляем новый объект в список объектов на сцене
         objects.Add(сombinedObject);
+        
+        // Собираем полученный объект
+        сombinedObject.Assemble();
     }
 
     // Создаёт абсолютно новый объект заданного типа в заданной позиции
@@ -113,6 +139,9 @@ public class ObjectManager : Singleton<ObjectManager>
         
         // Добавляем новый объект в список объектов на сцене
         objects.Add(сombinedObject);
+        
+        // Собираем полученный объект
+        сombinedObject.Assemble();
 
         return newCombinedObject.transform;
     }
